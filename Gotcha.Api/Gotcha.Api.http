@@ -1,0 +1,6 @@
+@Gotcha.Api_HostAddress = http://localhost:5004
+
+GET {{Gotcha.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

@@ -1,0 +1,65 @@
+@page "/"
+@inject NavigationManager Nav
+@inject Gotcha.Client.Services.GameApiService Api
+
+<PageTitle>Gotcha</PageTitle>
+
+<div class="flex flex-col items-center justify-center gap-8 py-12">
+    <div class="text-center">
+        <h2 class="text-2xl font-bold mb-2">Two-Player Word Game</h2>
+        <p class="text-gray-400 max-w-sm text-center">
+            Set a word. Let your opponent guess it. Swap the word once to keep them on their toes.
+        </p>
+    </div>
+
+    <button class="bg-white text-black font-bold text-lg py-3 px-8 rounded-lg hover:bg-gray-200 transition"
+            @onclick="CreateGame"
+            disabled="@_creating">
+        @(_creating ? "Creating..." : "🎯 New Game")
+    </button>
+
+    @if (!string.IsNullOrEmpty(_error))
+    {
+        <p class="text-red-400">@_error</p>
+    }
+
+    @if (_newGame != null)
+    {
+        <div class="bg-[#1a1a1b] border border-[#3a3a3c] rounded-lg p-6 max-w-sm w-full">
+            <p class="font-bold mb-2 text-green-400">✓ Game Created!</p>
+            <p class="text-sm text-gray-400 mb-1">Your setter link:</p>
+            <p class="text-sm font-mono text-blue-400 break-all mb-3 cursor-pointer"
+               @onclick="() => Nav.NavigateTo(_newGame.SetUrl)">
+                @_newGame.SetUrl
+            </p>
+            <p class="text-sm text-gray-400 mb-1">Send this to your opponent:</p>
+            <p class="text-sm font-mono text-yellow-400 break-all">@_newGame.GuessUrl</p>
+            <button class="mt-4 w-full bg-white text-black font-bold py-2 rounded hover:bg-gray-200"
+                    @onclick="() => Nav.NavigateTo(_newGame.SetUrl)">
+                Go to Setter View →
+            </button>
+        </div>
+    }
+</div>
+
+@code {
+    private bool _creating;
+    private string? _error;
+    private CreateGameResponse? _newGame;
+
+    private async Task CreateGame()
+    {
+        _creating = true;
+        _error = null;
+        _newGame = null;
+        try
+        {
+            _newGame = await Api.CreateGameAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to create game: {ex.Message}";
+        }
+        _creating = false;
+    }
+}

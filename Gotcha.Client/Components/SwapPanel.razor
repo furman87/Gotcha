@@ -1,0 +1,106 @@
+@using Gotcha.Client.Models
+
+<div class="bg-[#1a1a1b] border border-[#3a3a3c] rounded-lg p-4 mt-4 max-w-sm">
+    <h3 class="text-lg font-bold text-yellow-400 mb-2">⚡ Change Word</h3>
+
+    @if (GreenConstraints.Any() || YellowConstraints.Any())
+    {
+        <div class="mb-3 text-sm text-gray-400">
+            @if (GreenConstraints.Any())
+            {
+                <p class="mb-1">🟩 Required positions:
+                    @foreach (var (pos, letter) in GreenConstraints)
+                    {
+                        <span class="text-green-400 font-mono font-bold ml-1">
+                            [@(pos+1)]=@(char.ToUpper(letter))
+                        </span>
+                    }
+                </p>
+            }
+            @if (YellowConstraints.Any())
+            {
+                <p>🟨 Must contain:
+                    @foreach (var letter in YellowConstraints)
+                    {
+                        <span class="text-yellow-400 font-mono font-bold ml-1">@(char.ToUpper(letter))</span>
+                    }
+                </p>
+            }
+        </div>
+    }
+
+    <div class="flex gap-2">
+        <input type="text" maxlength="5"
+               class="bg-[#121213] border border-[#3a3a3c] text-white font-mono uppercase text-center rounded px-2 py-1 w-32 focus:outline-none focus:border-yellow-400"
+               placeholder="WORD"
+               @bind="NewWord"
+               @onkeydown="@(async e => { if (e.Key == "Enter") await Submit(); })" />
+        <button class="bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-1 px-3 rounded disabled:opacity-50"
+                @onclick="Submit"
+                disabled="@(IsSubmitting || NewWord.Length != 5)">
+            @(IsSubmitting ? "..." : "Swap")
+        </button>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Error))
+    {
+        <p class="text-red-400 text-sm mt-2">⚠ @Error</p>
+    }
+</div>
+
+@code {
+    [Parameter] public List<GuessResponse> Guesses { get; set; } = new();
+    [Parameter] public EventCallback<string> OnSwap { get; set; }
+    [Parameter] public string? ExternalError { get; set; }
+
+    private string NewWord { get; set; } = "";
+    private string? Error { get; set; }
+    private bool IsSubmitting { get; set; }
+
+    private Dictionary<int, char> GreenConstraints => Guesses
+        .SelectMany((g, _) => g.Result.Select((r, i) => (i, r)))
+        .Where(x => x.r.Status == "green")
+        .GroupBy(x => x.i)
+        .ToDictionary(g => g.Key, g => g.First().r.Letter);
+
+    private HashSet<char> YellowConstraints => Guesses
+        .SelectMany(g => g.Result)
+        .Where(r => r.Status == "yellow")
+        .Select(r => r.Letter)
+        .ToHashSet();
+
+    protected override void OnParametersSet()
+    {
+        Error = ExternalError;
+    }
+
+    private async Task Submit()
+    {
+        var word = NewWord.Trim().ToLowerInvariant();
+        if (word.Length != 5) { Error = "Word must be 5 letters"; return; }
+
+        // Client-side constraint preview
+        foreach (var (pos, letter) in GreenConstraints)
+        {
+            if (word[pos] != letter)
+            {
+                Error = $"Position {pos + 1} must be '{char.ToUpper(letter)}'";
+                return;
+            }
+        }
+        foreach (var letter in YellowConstraints)
+        {
+            if (!word.Contains(letter))
+            {
+                Error = $"Word must contain '{char.ToUpper(letter)}'";
+                return;
+            }
+        }
+
+        Error = null;
+        IsSubmitting = true;
+        await OnSwap.InvokeAsync(word);
+        IsSubmitting = false;
+        NewWord = "";
+    }
+}

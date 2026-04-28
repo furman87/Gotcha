@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="Gotcha.Api/Gotcha.Api.csproj" />
+  <Project Path="Gotcha.Client/Gotcha.Client.csproj" />
+</Solution>

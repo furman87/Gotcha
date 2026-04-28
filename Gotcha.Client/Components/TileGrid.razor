@@ -1,0 +1,54 @@
+@using Gotcha.Client.Models
+
+<div class="flex flex-col gap-1 mb-4">
+    @for (int row = 0; row < TotalRows; row++)
+    {
+        var rowIndex = row;
+        <div class="flex gap-1">
+            @for (int col = 0; col < 5; col++)
+            {
+                var colIndex = col;
+                var tileClass = GetTileClass(rowIndex, colIndex);
+                var letter = GetTileLetter(rowIndex, colIndex);
+                <div class="tile @tileClass">@letter</div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public List<GuessResponse> Guesses { get; set; } = new();
+    [Parameter] public string CurrentInput { get; set; } = "";
+    [Parameter] public int TotalRows { get; set; } = 6;
+    [Parameter] public int? SwapAfterGuess { get; set; }
+
+    private string GetTileLetter(int row, int col)
+    {
+        if (row < Guesses.Count)
+            return Guesses[row].Word.Length > col ? Guesses[row].Word[col].ToString().ToUpper() : "";
+        if (row == Guesses.Count)
+            return CurrentInput.Length > col ? CurrentInput[col].ToString().ToUpper() : "";
+        return "";
+    }
+
+    private string GetTileClass(int row, int col)
+    {
+        if (row < Guesses.Count)
+        {
+            var result = Guesses[row].Result;
+            if (col < result.Count)
+            {
+                return result[col].Status switch
+                {
+                    "green" => "tile-green",
+                    "yellow" => "tile-yellow",
+                    "gray" => "tile-gray",
+                    _ => "tile-gray"
+                };
+            }
+        }
+        if (row == Guesses.Count && CurrentInput.Length > col)
+            return "tile-filled";
+        return "";
+    }
+}

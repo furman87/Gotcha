@@ -1,0 +1,236 @@
+@page "/game/{GameId:guid}/set"
+@using Gotcha.Client.Components
+@using Gotcha.Client.Models
+@using Gotcha.Client.Services
+@using System.Timers
+@inject GameApiService Api
+@inject NavigationManager Nav
+@implements IDisposable
+
+<PageTitle>Gotcha - Setter</PageTitle>
+
+<div class="w-full max-w-lg">
+    <!-- Status bar -->
+    <div class="flex justify-between items-center mb-4 text-sm text-gray-400">
+        <span class="bg-[#1a1a1b] border border-[#3a3a3c] rounded px-2 py-1">
+            🎯 Setter View
+        </span>
+        <span class="flex items-center gap-1">
+            <span class="w-2 h-2 rounded-full bg-green-500 inline-block @(IsPolling ? "animate-pulse" : "")"></span>
+            Live
+        </span>
+    </div>
+
+    @if (_game == null)
+    {
+        <p class="text-gray-400">Loading...</p>
+    }
+    else if (_game.Status == "waiting")
+    {
+        <!-- Word entry form -->
+        <div class="bg-[#1a1a1b] border border-[#3a3a3c] rounded-lg p-6 max-w-sm mx-auto">
+            <h2 class="text-xl font-bold mb-4 text-center">Set Your Word</h2>
+            <p class="text-gray-400 text-sm mb-4 text-center">Choose a 5-letter word for your opponent to guess.</p>
+
+            <div class="flex flex-col gap-3">
+                <input type="text" maxlength="5"
+                       class="bg-[#121213] border border-[#3a3a3c] text-white font-mono uppercase text-center text-xl rounded px-3 py-2 focus:outline-none focus:border-white tracking-widest"
+                       placeholder="WORD"
+                       @bind="_wordInput"
+                       @onkeydown="@(async e => { if (e.Key == "Enter") await SubmitWord(); })" />
+
+                <div class="flex flex-col gap-1">
+                    <label class="text-sm text-gray-400">Extra guesses after swap</label>
+                    <div class="flex items-center gap-3">
+                        <button type="button"
+                                class="w-8 h-8 rounded bg-[#3a3a3c] text-white font-bold hover:bg-[#565758] disabled:opacity-40"
+                                @onclick="() => _bonusGuesses = Math.Max(0, _bonusGuesses - 1)"
+                                disabled="@(_bonusGuesses <= 0)">−</button>
+                        <span class="text-white font-bold text-lg w-4 text-center">@_bonusGuesses</span>
+                        <button type="button"
+                                class="w-8 h-8 rounded bg-[#3a3a3c] text-white font-bold hover:bg-[#565758] disabled:opacity-40"
+                                @onclick="() => _bonusGuesses = Math.Min(9, _bonusGuesses + 1)"
+                                disabled="@(_bonusGuesses >= 9)">+</button>
+                    </div>
+                    <p class="text-xs text-gray-500">Bonus guesses given to opponent if you swap</p>
+                </div>
+
+                @if (!string.IsNullOrEmpty(_wordError))
+                {
+                    <p class="text-red-400 text-sm">⚠ @_wordError</p>
+                }
+                <button class="bg-white text-black font-bold py-2 rounded hover:bg-gray-200 disabled:opacity-50"
+                        @onclick="SubmitWord"
+                        disabled="@(_wordInput.Length != 5 || _submitting)">
+                    @(_submitting ? "Setting..." : "Set Word")
+                </button>
+            </div>
+
+            <div class="mt-4 pt-4 border-t border-[#3a3a3c]">
+                <p class="text-xs text-gray-500 text-center">Share the guesser link:</p>
+                <p class="text-xs text-blue-400 break-all text-center mt-1 cursor-pointer"
+                   @onclick="CopyGuessLink">
+                    @GuessUrl
+                </p>
+                @if (_linkCopied)
+                {
+                    <p class="text-xs text-green-400 text-center mt-1">Copied!</p>
+                }
+            </div>
+        </div>
+    }
+    else
+    {
+        <!-- Game in progress / over -->
+        <div class="flex justify-between items-center mb-4">
+            <div class="text-sm">
+                @{
+                    var totalGuesses = _game.GuessesAllowed;
+                    var usedGuesses = _game.Guesses.Count;
+                }
+                <span class="text-gray-400">Guesses: </span>
+                <span class="font-bold">@usedGuesses / @totalGuesses</span>
+            </div>
+            <div>
+                @if (_game.Status == "won")
+                {
+                    <span class="text-red-400 font-bold">😬 Guesser Won!</span>
+                }
+                else if (_game.Status == "lost")
+                {
+                    <span class="text-green-400 font-bold">🎉 Setter Won!</span>
+                }
+                else
+                {
+                    <span class="text-gray-400">@(_game.Status == "active" ? "Game Active" : _game.Status)</span>
+                }
+            </div>
+        </div>
+
+        @if (_game.IsOver)
+        {
+            <div class="bg-[#1a1a1b] border border-[#3a3a3c] rounded-lg p-4 mb-4 text-center">
+                <p class="text-gray-400 text-sm">The word was:</p>
+                <p class="text-3xl font-bold tracking-widest font-mono text-white mt-1">@(_game.Answer?.ToUpperInvariant())</p>
+            </div>
+        }
+        else if (_game.SetterWord != null)
+        {
+            <div class="bg-[#1a1a1b] border border-[#3a3a3c] rounded-lg p-3 mb-4 flex items-center gap-3">
+                <span class="text-gray-400 text-sm">🎯 Target:</span>
+                <span class="text-2xl font-bold font-mono tracking-widest text-white">@_game.SetterWord.ToUpperInvariant()</span>
+            </div>
+        }
+
+        <TileGrid Guesses="_game.Guesses" TotalRows="_game.GuessesAllowed" SwapAfterGuess="_game.SwapOccurredAfterGuess" />
+
+        @if (!_game.IsOver && !_game.SwapUsed && _game.Guesses.Count > 0 && !_showSwapPanel)
+        {
+            <button class="mt-4 bg-yellow-700 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded"
+                    @onclick="() => _showSwapPanel = true">
+                ⚡ Change Word (1 use remaining)
+            </button>
+        }
+        else if (_game.SwapUsed && !_game.IsOver)
+        {
+            <p class="text-gray-500 text-sm mt-4">⚡ Swap used — word was changed after guess @_game.SwapOccurredAfterGuess</p>
+        }
+
+        @if (_showSwapPanel && !_game.SwapUsed && !_game.IsOver)
+        {
+            <SwapPanel Guesses="_game.Guesses"
+                       OnSwap="DoSwap"
+                       ExternalError="_swapError" />
+            <button class="mt-2 text-sm text-gray-500 hover:text-gray-300"
+                    @onclick="() => { _showSwapPanel = false; _swapError = null; }">
+                Cancel
+            </button>
+        }
+
+        @if (_game.Status == "waiting")
+        {
+            <div class="mt-6 pt-4 border-t border-[#3a3a3c]">
+                <p class="text-xs text-gray-500">Guesser link:</p>
+                <p class="text-xs text-blue-400 break-all cursor-pointer mt-1" @onclick="CopyGuessLink">
+                    @GuessUrl
+                </p>
+                @if (_linkCopied) { <p class="text-xs text-green-400 mt-1">Copied!</p> }
+            </div>
+        }
+    }
+</div>
+
+@code {
+    [Parameter] public Guid GameId { get; set; }
+
+    private GameStateResponse? _game;
+    private string _wordInput = "";
+    private string? _wordError;
+    private bool _submitting;
+    private bool _showSwapPanel;
+    private string? _swapError;
+    private bool _linkCopied;
+    private bool IsPolling = true;
+    private Timer? _timer;
+    private int _bonusGuesses = 3;
+    private bool _bonusGuessesInitialized;
+
+    private string GuessUrl => $"{Nav.BaseUri}game/{GameId}/guess";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadGame();
+        if (_game != null && !_bonusGuessesInitialized)
+        {
+            _bonusGuesses = _game.BonusGuesses;
+            _bonusGuessesInitialized = true;
+        }
+        _timer = new Timer(2000);
+        _timer.Elapsed += async (_, _) => await InvokeAsync(async () =>
+        {
+            await LoadGame();
+            StateHasChanged();
+        });
+        _timer.Start();
+    }
+
+    private async Task LoadGame()
+    {
+        try { _game = await Api.GetGameAsync(GameId, setter: true); }
+        catch { }
+    }
+
+    private async Task SubmitWord()
+    {
+        if (_wordInput.Length != 5) return;
+        _submitting = true;
+        _wordError = null;
+        var (success, error) = await Api.SetWordAsync(GameId, _wordInput, _bonusGuesses);
+        _submitting = false;
+        if (!success) _wordError = error;
+        else await LoadGame();
+    }
+
+    private async Task DoSwap(string newWord)
+    {
+        var (_, error) = await Api.SwapWordAsync(GameId, newWord);
+        if (error != null) { _swapError = error; return; }
+        _showSwapPanel = false;
+        _swapError = null;
+        await LoadGame();
+    }
+
+    private async Task CopyGuessLink()
+    {
+        _linkCopied = true;
+        await Task.Delay(2000);
+        _linkCopied = false;
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        _timer?.Dispose();
+        IsPolling = false;
+    }
+}

@@ -1,0 +1,80 @@
+# ============================================================
+# .NET / ASP.NET Core / Blazor
+# ============================================================
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+publish/
+.publish/
+
+# NuGet
+*.nupkg
+*.snupkg
+.nuget/
+packages/
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# Test results & coverage
+TestResults/
+coverage/
+*.trx
+*.coveragexml
+*.coverage
+lcov.info
+
+# ============================================================
+# Visual Studio
+# ============================================================
+.vs/
+*.rsuser
+*.vsp
+*.vspx
+.localhistory/
+*.VC.db
+*.VC.opendb
+ipch/
+AutoSave/
+
+# ============================================================
+# JetBrains Rider / IntelliJ
+# ============================================================
+.idea/
+*.sln.iml
+
+# ============================================================
+# VS Code
+# ============================================================
+.vscode/
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+
+# ============================================================
+# Environment & secrets — NEVER commit
+# ============================================================
+.env
+.env.*
+!.env.example
+
+# ============================================================
+# OS generated
+# ============================================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ============================================================
+# Logs
+# ============================================================
+*.log
+logs/

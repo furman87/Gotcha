@@ -1,0 +1,48 @@
+@using Gotcha.Client.Models
+
+<div class="flex flex-col gap-1 items-center">
+    @foreach (var row in KeyRows)
+    {
+        <div class="flex gap-1">
+            @foreach (var key in row)
+            {
+                var k = key;
+                var keyClass = GetKeyClass(k);
+                var isWide = k is "ENTER" or "⌫";
+                <button class="key @keyClass @(isWide ? "key-wide" : "")"
+                        @onclick="() => OnKeyPress.InvokeAsync(k)">
+                    @k
+                </button>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public List<GuessResponse> Guesses { get; set; } = new();
+    [Parameter] public EventCallback<string> OnKeyPress { get; set; }
+
+    private static readonly string[][] KeyRows = {
+        new[] { "Q","W","E","R","T","Y","U","I","O","P" },
+        new[] { "A","S","D","F","G","H","J","K","L" },
+        new[] { "ENTER","Z","X","C","V","B","N","M","⌫" }
+    };
+
+    private string GetKeyClass(string key)
+    {
+        if (key is "ENTER" or "⌫") return "";
+        var letter = key.ToLowerInvariant()[0];
+
+        // Green takes highest priority
+        bool anyGreen = Guesses.Any(g => g.Result.Any(r => r.Letter == letter && r.Status == "green"));
+        if (anyGreen) return "key-green";
+
+        bool anyYellow = Guesses.Any(g => g.Result.Any(r => r.Letter == letter && r.Status == "yellow"));
+        if (anyYellow) return "key-yellow";
+
+        bool anyGray = Guesses.Any(g => g.Result.Any(r => r.Letter == letter && r.Status == "gray"));
+        if (anyGray) return "key-gray";
+
+        return "";
+    }
+}

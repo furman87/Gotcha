@@ -1,0 +1,53 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: gotcha
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d gotcha"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - gotcha_net
+
+  api:
+    build:
+      context: .
+      target: api
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__DefaultConnection: "Host=db;Database=gotcha;Username=postgres;Password=${POSTGRES_PASSWORD}"
+      ClientBaseUrl: "https://gotcha.furman87.com"
+      AllowedOrigins__0: "https://gotcha.furman87.com"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - gotcha_net
+
+  web:
+    build:
+      context: .
+      target: web
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8079:80"
+    depends_on:
+      - api
+    networks:
+      - gotcha_net
+
+networks:
+  gotcha_net:
+    driver: bridge
+
+volumes:
+  postgres_data:

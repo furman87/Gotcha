@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gotcha</title>
+    <base href="/" />
+    <link rel="preload" id="webassembly" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        window.focusElement = function (el) { if (el) el.focus(); };
+
+        (function () {
+            let _keyHandler = null;
+            let _keyRef = null;
+
+            window.addKeyListener = function (dotNetRef) {
+                window.removeKeyListener();
+                _keyRef = dotNetRef;
+                _keyHandler = function (e) {
+                    if (e.ctrlKey || e.altKey || e.metaKey || e.isComposing) return;
+                    var t = e.target;
+                    if (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable) return;
+                    var k = e.key;
+                    if (k === 'Enter' || k === 'Backspace' || (k.length === 1 && /^[a-zA-Z]$/.test(k))) {
+                        e.preventDefault();
+                        _keyRef.invokeMethodAsync('HandleKeyFromJs', k);
+                    }
+                };
+                document.addEventListener('keydown', _keyHandler);
+            };
+
+            window.removeKeyListener = function () {
+                if (_keyHandler) {
+                    document.removeEventListener('keydown', _keyHandler);
+                    _keyHandler = null;
+                }
+                _keyRef = null;
+            };
+        })();
+    </script>
+    <style>
+        :root {
+            --color-green: #538d4e;
+            --color-yellow: #b59f3b;
+            --color-gray: #3a3a3c;
+            --color-empty: #121213;
+            --color-bg: #121213;
+            --color-surface: #1a1a1b;
+            --color-border: #3a3a3c;
+            --color-text: #ffffff;
+        }
+
+        body {
+            background-color: var(--color-bg);
+            color: var(--color-text);
+            font-family: 'Courier New', Courier, monospace;
+            margin: 0;
+        }
+
+        .tile {
+            width: 62px;
+            height: 62px;
+            border: 2px solid var(--color-border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            transition: border-color 0.1s;
+            perspective: 250px;
+        }
+
+        .tile-flip {
+            animation: flipTile 0.5s ease forwards;
+        }
+
+        @keyframes flipTile {
+            0% { transform: rotateX(0deg); }
+            50% { transform: rotateX(-90deg); }
+            100% { transform: rotateX(0deg); }
+        }
+
+        .tile-green { background-color: var(--color-green); border-color: var(--color-green); color: white; }
+        .tile-yellow { background-color: var(--color-yellow); border-color: var(--color-yellow); color: white; }
+        .tile-gray { background-color: var(--color-gray); border-color: var(--color-gray); color: white; }
+        .tile-filled { border-color: #565758; }
+
+        .key {
+            height: 58px;
+            min-width: 43px;
+            padding: 0 8px;
+            border-radius: 4px;
+            background-color: #818384;
+            color: white;
+            font-weight: bold;
+            font-size: 0.85rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+            border: none;
+            font-family: inherit;
+        }
+
+        .key:hover { opacity: 0.8; }
+        .key-green { background-color: var(--color-green); }
+        .key-yellow { background-color: var(--color-yellow); }
+        .key-gray { background-color: var(--color-gray); }
+        .key-wide { min-width: 65px; font-size: 0.75rem; }
+
+        .swap-banner {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .blazor-error-boundary { display: none; }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div style="display:flex;justify-content:center;align-items:center;height:100vh;background:#121213;color:white;font-family:monospace;font-size:1.5rem;">
+            Loading Gotcha...
+        </div>
+    </div>
+    <div id="blazor-error-ui" class="blazor-error-boundary">An error has occurred.</div>
+    <script src="_framework/blazor.webassembly#[.{fingerprint}].js"></script>
+</body>
+</html>
