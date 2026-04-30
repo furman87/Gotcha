@@ -11,6 +11,10 @@
     <script>
         window.focusElement = function (el) { if (el) el.focus(); };
 
+        window.copyToClipboard = function (text) {
+            return navigator.clipboard.writeText(text);
+        };
+
         (function () {
             let _keyHandler = null;
             let _keyRef = null;

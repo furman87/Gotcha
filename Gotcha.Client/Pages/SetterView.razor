@@ -5,6 +5,7 @@
 @using System.Timers
 @inject GameApiService Api
 @inject NavigationManager Nav
+@inject IJSRuntime JS
 @implements IDisposable
 
 <PageTitle>Gotcha - Setter</PageTitle>
@@ -15,6 +16,13 @@
         <span class="bg-[#1a1a1b] border border-[#3a3a3c] rounded px-2 py-1">
             🎯 Setter View
         </span>
+        @if (_game != null)
+        {
+            <button class="bg-[#1a1a1b] border border-[#3a3a3c] rounded px-2 py-1 hover:border-yellow-400 hover:text-yellow-400 transition"
+                    @onclick="CopyGuessLink" title="@GuessUrl">
+                @(_linkCopied ? "✓ Copied!" : "📋 Copy Opponent Link")
+            </button>
+        }
         <span class="flex items-center gap-1">
             <span class="w-2 h-2 rounded-full bg-green-500 inline-block @(IsPolling ? "animate-pulse" : "")"></span>
             Live
@@ -67,11 +75,14 @@
             </div>
 
             <div class="mt-4 pt-4 border-t border-[#3a3a3c]">
-                <p class="text-xs text-gray-500 text-center">Share the guesser link:</p>
-                <p class="text-xs text-blue-400 break-all text-center mt-1 cursor-pointer"
-                   @onclick="CopyGuessLink">
-                    @GuessUrl
-                </p>
+                <p class="text-xs text-gray-500 text-center mb-1">Opponent's link:</p>
+                <div class="flex items-center gap-2 bg-[#121213] rounded px-2 py-1">
+                    <p class="text-xs text-yellow-400 break-all font-mono flex-1 min-w-0">@GuessUrl</p>
+                    <button class="shrink-0 bg-[#3a3a3c] hover:bg-[#565758] text-white text-xs px-2 py-1 rounded transition"
+                            @onclick="CopyGuessLink" title="Copy to clipboard">
+                        @(_linkCopied ? "✓" : "📋")
+                    </button>
+                </div>
                 @if (_linkCopied)
                 {
                     <p class="text-xs text-green-400 text-center mt-1">Copied!</p>
@@ -146,17 +157,6 @@
                 Cancel
             </button>
         }
-
-        @if (_game.Status == "waiting")
-        {
-            <div class="mt-6 pt-4 border-t border-[#3a3a3c]">
-                <p class="text-xs text-gray-500">Guesser link:</p>
-                <p class="text-xs text-blue-400 break-all cursor-pointer mt-1" @onclick="CopyGuessLink">
-                    @GuessUrl
-                </p>
-                @if (_linkCopied) { <p class="text-xs text-green-400 mt-1">Copied!</p> }
-            </div>
-        }
     }
 </div>
 
@@ -222,10 +222,16 @@
 
     private async Task CopyGuessLink()
     {
-        _linkCopied = true;
-        await Task.Delay(2000);
-        _linkCopied = false;
-        StateHasChanged();
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", GuessUrl);
+            _linkCopied = true;
+            StateHasChanged();
+            await Task.Delay(2000);
+            _linkCopied = false;
+            StateHasChanged();
+        }
+        catch { }
     }
 
     public void Dispose()

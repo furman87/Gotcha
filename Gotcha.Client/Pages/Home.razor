@@ -1,6 +1,7 @@
 @page "/"
 @inject NavigationManager Nav
 @inject Gotcha.Client.Services.GameApiService Api
+@inject IJSRuntime JS
 
 <PageTitle>Gotcha</PageTitle>
 
@@ -12,7 +13,7 @@
         </p>
     </div>
 
-    <button class="bg-white text-black font-bold text-lg py-3 px-8 rounded-lg hover:bg-gray-200 transition"
+    <button class="bg-[#538d4e] text-white font-bold text-lg py-3 px-8 rounded-lg hover:bg-[#6aaf63] transition"
             @onclick="CreateGame"
             disabled="@_creating">
         @(_creating ? "Creating..." : "🎯 New Game")
@@ -33,7 +34,17 @@
                 @_newGame.SetUrl
             </p>
             <p class="text-sm text-gray-400 mb-1">Send this to your opponent:</p>
-            <p class="text-sm font-mono text-yellow-400 break-all">@_newGame.GuessUrl</p>
+            <div class="flex items-center gap-2 bg-[#121213] rounded px-2 py-1">
+                <p class="text-sm font-mono text-yellow-400 break-all flex-1 min-w-0">@_newGame.GuessUrl</p>
+                <button class="shrink-0 bg-[#3a3a3c] hover:bg-[#565758] text-white text-xs px-2 py-1 rounded transition"
+                        @onclick="CopyGuessUrl" title="Copy to clipboard">
+                    @(_guessCopied ? "✓" : "📋")
+                </button>
+            </div>
+            @if (_guessCopied)
+            {
+                <p class="text-xs text-green-400 mt-1">Copied to clipboard!</p>
+            }
             <button class="mt-4 w-full bg-white text-black font-bold py-2 rounded hover:bg-gray-200"
                     @onclick="() => Nav.NavigateTo(_newGame.SetUrl)">
                 Go to Setter View →
@@ -46,6 +57,22 @@
     private bool _creating;
     private string? _error;
     private CreateGameResponse? _newGame;
+    private bool _guessCopied;
+
+    private async Task CopyGuessUrl()
+    {
+        if (_newGame == null) return;
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", _newGame.GuessUrl);
+            _guessCopied = true;
+            StateHasChanged();
+            await Task.Delay(2000);
+            _guessCopied = false;
+            StateHasChanged();
+        }
+        catch { }
+    }
 
     private async Task CreateGame()
     {
